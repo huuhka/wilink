@@ -1,7 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
@@ -20,8 +16,8 @@ var releaseCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(releaseCmd)
-	releaseCmd.PersistentFlags().IntP("definitionId", "d", 0, "Id for the Classic Release Definition")
 	releaseCmd.PersistentFlags().StringP("project", "p", "", "Name of the project")
-	releaseCmd.MarkPersistentFlagRequired("definitionId")
+	releaseCmd.PersistentFlags().StringP("organizationUrl", "o", "", "Url of the organization")
 	releaseCmd.MarkPersistentFlagRequired("project")
+	releaseCmd.MarkPersistentFlagRequired("organizationUrl")
 }

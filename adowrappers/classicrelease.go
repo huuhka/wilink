@@ -1,4 +1,4 @@
-package adotool
+package adowrappers
 
 import (
 	"context"
@@ -102,6 +102,28 @@ func (r *Release) StartStage(client release.Client, name string) error {
 	return nil
 }
 
+// GetRelease gets a classic release by a given Id
+func GetRelease(client release.Client, releaseId int, project string) (Release, error) {
+	args := release.GetReleaseArgs{
+		Project:   &project,
+		ReleaseId: &releaseId,
+	}
+
+	ctx := context.Background()
+
+	rel, err := client.GetRelease(ctx, args)
+	if err != nil {
+		return Release{}, fmt.Errorf("could not get release %d, Error: %w", releaseId, err)
+	}
+
+	return Release{
+		Id:      *rel.Id,
+		Name:    *rel.Name,
+		Project: *rel.ProjectReference.Name,
+		Stages:  parseStages(rel),
+	}, err
+}
+
 // getReleaseDefinition gets a classic release definition by a given Id as represented by the Azure DevOps API
 func getReleaseDefinition(project string, relDefId int, client release.Client) (*release.ReleaseDefinition, error) {
 	args := release.GetReleaseDefinitionArgs{
@@ -116,6 +138,10 @@ func getReleaseDefinition(project string, relDefId int, client release.Client) (
 }
 
 func parseStages(rel *release.Release) []Stage {
+	if rel.Environments == nil {
+		return []Stage{}
+	}
+
 	stages := make([]Stage, len(*rel.Environments))
 	for i := range *rel.Environments {
 		env := (*rel.Environments)[i]

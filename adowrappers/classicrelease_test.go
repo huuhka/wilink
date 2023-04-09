@@ -1,12 +1,13 @@
-package adotool_test
+package adowrappers_test
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
-	"github.com/huuhka/wilink/adotool"
+	"github.com/huuhka/wilink/adowrappers"
 	"github.com/huuhka/wilink/helpers"
+	"github.com/microsoft/azure-devops-go-api/azuredevops"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/release"
 	"strings"
 	"testing"
@@ -38,14 +39,14 @@ func TestGetReleaseDefinition(t *testing.T) {
 		inputProj string
 		inputID   int
 		returnErr error
-		expected  adotool.ReleaseDefinition
+		expected  adowrappers.ReleaseDefinition
 	}{
 		{
 			"should get classic release definition",
 			"success-proj",
 			1,
 			nil,
-			adotool.ReleaseDefinition{
+			adowrappers.ReleaseDefinition{
 				Id:      1,
 				Project: "success-proj",
 				Name:    "Definition 1",
@@ -56,7 +57,7 @@ func TestGetReleaseDefinition(t *testing.T) {
 			"failure-proj",
 			1,
 			errors.New("release definition not found"),
-			adotool.ReleaseDefinition{},
+			adowrappers.ReleaseDefinition{},
 		},
 	}
 
@@ -70,7 +71,7 @@ func TestGetReleaseDefinition(t *testing.T) {
 				returnErr: tc.returnErr,
 			}
 
-			got, err := adotool.GetReleaseDefinition(client, tc.inputProj, tc.inputID)
+			got, err := adowrappers.GetReleaseDefinition(client, tc.inputProj, tc.inputID)
 			if err != nil && !strings.Contains(err.Error(), tc.returnErr.Error()) {
 				t.Errorf("expected error %q, got %q", tc.returnErr.Error(), err.Error())
 			}
@@ -108,23 +109,23 @@ func (c MockClient) CreateRelease(ctx context.Context, args release.CreateReleas
 func TestCreateRelease(t *testing.T) {
 	tcs := []struct {
 		name      string
-		input     adotool.ReleaseDefinition
+		input     adowrappers.ReleaseDefinition
 		returnErr error
-		expected  adotool.Release
+		expected  adowrappers.Release
 	}{
 		{
 			"should create new instance of a classic release with stages populated",
-			adotool.ReleaseDefinition{
+			adowrappers.ReleaseDefinition{
 				Project: "success-proj",
 				Name:    "Release 1",
 				Id:      1,
 			},
 			nil,
-			adotool.Release{
+			adowrappers.Release{
 				Id:      1,
 				Project: "success-proj",
 				Name:    "Release 1",
-				Stages: []adotool.Stage{
+				Stages: []adowrappers.Stage{
 					{
 						Id:     1,
 						Name:   "Stage1",
@@ -135,13 +136,13 @@ func TestCreateRelease(t *testing.T) {
 		},
 		{
 			"should fail when given release definition is not found",
-			adotool.ReleaseDefinition{
+			adowrappers.ReleaseDefinition{
 				Project: "failure-proj",
 				Name:    "Release 1",
 				Id:      1,
 			},
 			errors.New("release definition not found"),
-			adotool.Release{},
+			adowrappers.Release{},
 		},
 		// TODO: Make this test work and apply for other calls too.
 		//{
@@ -165,7 +166,7 @@ func TestCreateRelease(t *testing.T) {
 				returnErr: tc.returnErr,
 			}
 
-			got, err := adotool.CreateRelease(client, tc.input)
+			got, err := adowrappers.CreateRelease(client, tc.input)
 			if err != nil && !strings.Contains(err.Error(), tc.returnErr.Error()) {
 				t.Fatalf("expected error %q, got %q", tc.returnErr.Error(), err.Error())
 			}
@@ -195,18 +196,18 @@ func (c MockClient) UpdateReleaseEnvironment(ctx context.Context, args release.U
 func TestRelease_StartStage(t *testing.T) {
 	tcs := []struct {
 		name              string
-		input             adotool.Release
+		input             adowrappers.Release
 		inputStageToStart string
 		returnErr         error
-		expected          adotool.Stage
+		expected          adowrappers.Stage
 	}{
 		{
 			"should set the value of the stage to in progress",
-			adotool.Release{
+			adowrappers.Release{
 				Id:      1,
 				Project: "success-proj",
 				Name:    "Release 1",
-				Stages: []adotool.Stage{
+				Stages: []adowrappers.Stage{
 					{
 						Id:     1,
 						Name:   "Stage1",
@@ -216,7 +217,7 @@ func TestRelease_StartStage(t *testing.T) {
 			},
 			"Stage1",
 			nil,
-			adotool.Stage{
+			adowrappers.Stage{
 				Id:     1,
 				Name:   "Stage1",
 				Status: release.EnvironmentStatusValues.InProgress,
@@ -224,11 +225,11 @@ func TestRelease_StartStage(t *testing.T) {
 		},
 		{
 			"should fail when given stage is not found in release",
-			adotool.Release{
+			adowrappers.Release{
 				Id:      1,
 				Project: "failure-proj",
 				Name:    "Release 1",
-				Stages: []adotool.Stage{
+				Stages: []adowrappers.Stage{
 					{
 						Id:     1,
 						Name:   "Stage1",
@@ -238,7 +239,7 @@ func TestRelease_StartStage(t *testing.T) {
 			},
 			"Stage2",
 			fmt.Errorf("could not find stage %s in release %s", "Stage2", "Release 1"),
-			adotool.Stage{},
+			adowrappers.Stage{},
 		},
 	}
 
@@ -260,6 +261,87 @@ func TestRelease_StartStage(t *testing.T) {
 			// Compare request with expected
 			if tc.returnErr == nil && !cmp.Equal(tc.input.Stages[0], tc.expected) {
 				t.Errorf("Test: %s, Got: %v, Expected: %v", tc.name, tc.input.Stages[0], tc.expected)
+			}
+
+		})
+	}
+}
+
+func (c MockClient) UpdateRelease(ctx context.Context, args release.UpdateReleaseArgs) (*release.Release, error) {
+	_ = ctx
+
+	if args.Release == nil {
+		return nil, &azuredevops.ArgumentNilOrEmptyError{ArgumentName: "args.Release"}
+	}
+
+	return args.Release, nil
+}
+
+func TestUpdateReleaseArtifacts(t *testing.T) {
+
+}
+
+func (c MockClient) GetRelease(ctx context.Context, args release.GetReleaseArgs) (*release.Release, error) {
+	_ = ctx
+
+	if args.ReleaseId == nil {
+		return nil, &azuredevops.ArgumentNilOrEmptyError{ArgumentName: "args.ReleaseId"}
+	}
+	if args.Project == nil {
+		return nil, &azuredevops.ArgumentNilOrEmptyError{ArgumentName: "args.Project"}
+	}
+
+	n := fmt.Sprintf("Release %d", *args.ReleaseId)
+
+	return &release.Release{
+		Id:   args.ReleaseId,
+		Name: &n,
+		ProjectReference: &release.ProjectReference{
+			Name: args.Project,
+		},
+	}, nil
+}
+
+func TestGetRelease(t *testing.T) {
+	tcs := []struct {
+		name          string
+		inputRelId    int
+		inputProjName string
+		returnErr     error
+		expected      adowrappers.Release
+	}{
+		{
+			"should return the release",
+			1,
+			"success-proj",
+			nil,
+			adowrappers.Release{
+				Id:      1,
+				Project: "success-proj",
+				Name:    "Release 1",
+				Stages:  []adowrappers.Stage{},
+			},
+		},
+	}
+
+	for _, tc := range tcs {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			// Create client
+			client := &MockClient{
+				returnErr: tc.returnErr,
+			}
+
+			got, err := adowrappers.GetRelease(client, tc.inputRelId, tc.inputProjName)
+			if err != nil && !strings.Contains(err.Error(), tc.returnErr.Error()) {
+				t.Fatalf("expected error %q, got %q", tc.returnErr.Error(), err.Error())
+			}
+
+			// Compare request with expected
+			if tc.returnErr == nil && !cmp.Equal(got, tc.expected) {
+				t.Errorf("Test: %s, Got: %+v, Expected: %+v", tc.name, got, tc.expected)
 			}
 		})
 	}

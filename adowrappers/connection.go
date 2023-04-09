@@ -1,4 +1,4 @@
-package adotool
+package adowrappers
 
 import (
 	"github.com/microsoft/azure-devops-go-api/azuredevops"

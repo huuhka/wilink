@@ -2,7 +2,7 @@ package old
 
 import (
 	"context"
-	"github.com/huuhka/wilink/adotool"
+	"github.com/huuhka/wilink/adowrappers"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/release"
 	"log"
 	"os"
@@ -15,7 +15,7 @@ func main2() {
 	authToken := ""
 
 	//connection := azuredevops.NewPatConnection(organizationUrl, personalAccessToken)
-	connection := adotool.NewOauthConnection(organizationUrl, authToken)
+	connection := adowrappers.NewOauthConnection(organizationUrl, authToken)
 
 	ctx := context.Background()
 
@@ -27,13 +27,13 @@ func main2() {
 	project := "Zure0100"
 	relId := 1
 
-	relDef, err := adotool.GetReleaseDefinition(crClient, project, relId)
+	relDef, err := adowrappers.GetReleaseDefinition(crClient, project, relId)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
 
-	rel, err := adotool.CreateRelease(crClient, relDef)
+	rel, err := adowrappers.CreateRelease(crClient, relDef)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)

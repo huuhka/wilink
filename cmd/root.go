@@ -1,7 +1,3 @@
-/*
-Copyright © 2022 Pasi Huuhka pasi@huuhka.net
-
-*/
 package cmd
 
 import (
